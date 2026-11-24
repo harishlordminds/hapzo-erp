@@ -27,20 +27,31 @@ export function geminiConnection() {
 }
 
 export function saveGeminiKey(key) {
+  saveSetting(name, key, key ? [name] : geminiNames);
+}
+
+export const defaultGeminiModel = () =>
+  (settings.HAPZO_GEMINI_MODEL || process.env.HAPZO_GEMINI_MODEL || 'gemini-3.8-flash').trim().replace(/^models\//, '');
+
+export function saveGeminiModel(model) {
+  ensure(/^[A-Za-z0-9._-]+$/.test(model), 'Choose a listed Gemini model.');
+  saveSetting('HAPZO_GEMINI_MODEL', model, ['HAPZO_GEMINI_MODEL']);
+}
+
+function saveSetting(variableName, value, names) {
   const original = readEnv();
-  const names = key ? [name] : geminiNames;
   const lineBreak = original.includes('\r\n') ? '\r\n' : '\n';
   let updated = original.replace(assignment, (line, variable, comment, ending) =>
     names.includes(variable) ? (comment ? comment.trimStart() + ending : '') : line);
-  if (key) {
+  if (value) {
     if (updated && !/[\r\n]$/.test(updated)) updated += lineBreak;
-    updated += name + '=' + key + lineBreak;
+    updated += variableName + '=' + value + lineBreak;
   }
 
   // Verify the edit with Node's dotenv parser before replacing the file.
   const expected = parseEnv(original);
   for (const variable of names) delete expected[variable];
-  if (key) expected[name] = key;
+  if (value) expected[variableName] = value;
   const parsed = parseEnv(updated);
   ensure(isDeepStrictEqual(parsed, expected), 'HAPZO could not merge the Gemini key into .env. Check the file format.', 422, 'ai-key-file');
 

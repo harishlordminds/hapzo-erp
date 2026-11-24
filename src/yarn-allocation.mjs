@@ -8,6 +8,7 @@ const open = a => round(a.qty - a.used);
 export const openAssignments = (lot, except = '') => (lot.assignments ?? []).filter(a => open(a) > 0 && a.workOrderId !== except);
 
 export function assignYarn(s, x, ctx) {
+  const mode = choice(x.mode ?? 'Assign', ['Assign', 'Release'], 'yarn allocation action');
   const lot = record(s.lots, x.lotId, 'yarn lot');
   ensure(['Yarn', 'Dyed yarn'].includes(lot.material), 'Allocate yarn or dyed yarn lots only.');
   const wo = record(s.workOrders, x.workOrderId, 'work order');
@@ -17,7 +18,7 @@ export function assignYarn(s, x, ctx) {
   const day = date(x.date);
   const qty = quantity(x.qty, 'Allocated quantity', lot.unit);
   lot.assignments ??= [];
-  if (x.mode === 'Release') {
+  if (mode === 'Release') {
     const mine = lot.assignments.filter(a => a.workOrderId === wo.id && a.role === role && open(a) > 0);
     ensure(qty <= sum(mine, open), 'Release exceeds the open ' + role.toLowerCase() + ' allocation of ' + lot.id + ' to ' + wo.number + '.');
     let left = qty;
@@ -34,7 +35,7 @@ export function assignYarn(s, x, ctx) {
     ensure(round(held + qty) <= lot.qty, 'Only ' + round(lot.qty - held) + ' ' + lot.unit + ' of ' + lot.id + ' is unallocated.');
     lot.assignments.push({ id: id(s, 'YAL'), workOrderId: wo.id, workOrder: wo.number, stage: wo.stage, role, qty, used: 0, date: day, reference: req(x.reference, 'Allocation reference') });
   }
-  return post(s, x.mode === 'Release' ? 'Yarn allocation release' : 'Yarn allocation', ctx, {
+  return post(s, mode === 'Release' ? 'Yarn allocation release' : 'Yarn allocation', ctx, {
     date: day, output: lot.id, workOrderId: wo.id, role, qty, unit: lot.unit, reference: x.reference || '',
   });
 }

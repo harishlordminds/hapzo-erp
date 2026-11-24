@@ -159,20 +159,38 @@ export function locationName(loc) {
   return [loc.site, loc.warehouse, loc.bin].filter(Boolean).join(' / ');
 }
 
+function sameOrderBuyer(order, buyerId, buyerName) {
+  return buyerId ? order.buyerId === buyerId : !order.buyerId && norm(order.buyer) === norm(buyerName);
+}
+
 export function newOrder(s, x, ctx) {
-  const buyer = party(s, x.buyerId, 'Buyer');
+  const buyer = x.buyerId ? party(s, x.buyerId, 'Buyer') : null;
+  const buyerName = buyer?.name || clean(x.buyerName, 200);
   const po = req(x.po, 'Buyer PO number');
-  ensure(!s.orders.some(o => o.buyerId === buyer.id && norm(o.po) === norm(po)), 'This buyer PO already exists.');
+  ensure(!s.orders.some(o => sameOrderBuyer(o, buyer?.id, buyerName) && norm(o.po) === norm(po)), 'This buyer PO already exists.');
   const row = {
-    id: id(s, 'PO'), po, buyerId: buyer.id, buyer: buyer.name,
-    date: date(x.date), currency: choice(x.currency || buyer.currency, CURRENCIES, 'PO currency'),
+    id: id(s, 'PO'), po, buyerId: buyer?.id || '', buyer: buyerName,
+    date: date(x.date), currency: choice(x.currency || buyer?.currency || s.settings.currency, CURRENCIES, 'PO currency'),
     clientOrderNo: clean(x.clientOrderNo, 100), client: clean(x.client, 200), division: clean(x.division, 120),
     shipDate: x.shipDate ? date(x.shipDate) : '', totalPieces: x.totalPieces ? quantity(x.totalPieces, 'Printed piece total', 'pcs') : null,
-    billingAddress: buyer.address, shipTo: clean(x.shipTo) || buyer.shipTo, terms: clean(x.terms) || buyer.terms,
+    billingAddress: buyer?.address || '', shipTo: clean(x.shipTo) || buyer?.shipTo || '', terms: clean(x.terms) || buyer?.terms || '',
     document: ctx.document(x.document, ['buyer-po']), revisions: [], kind: choice(x.kind || 'Goods', ['Goods', 'Service'], 'order type'),
   };
   s.orders.push(row);
   return row;
+}
+
+export function linkOrderBuyer(s, x) {
+  const order = record(s.orders, x.orderId, 'buyer PO');
+  const buyer = party(s, x.buyerId, 'Buyer');
+  ensure(!order.buyerId, 'This PO already has a linked buyer.');
+  ensure(!s.orders.some(other => other.buyerId === buyer.id && norm(other.po) === norm(order.po)), 'This buyer already has a PO with this number.');
+  order.buyerId = buyer.id;
+  order.buyer = buyer.name;
+  order.billingAddress ||= buyer.address;
+  order.shipTo ||= buyer.shipTo;
+  order.terms ||= buyer.terms;
+  return order;
 }
 
 export function orderRevision(s, x, ctx) {
@@ -186,23 +204,23 @@ export function orderRevision(s, x, ctx) {
   return o;
 }
 
-function routeSnapshot(s, selected) {
-  if (Object.hasOwn(ROUTES, selected)) return { route: selected, routeVersion: 'Built-in 1', stages: [...ROUTES[selected]] };
-  const route = record(s.routes, selected, 'route');
-  return { route: route.name, routeVersion: route.version, stages: [...route.stages] };
-}
-
-function specification(s, x, previous = null) {
-  const unit = choice(x.unit, UNITS, 'order unit');
-  const qty = quantity(x.qty, 'Ordered quantity', unit);
-  const scheme = choice(x.scheme || 'Conventional', [...Object.keys(SCHEMES), ...s.policies.map(p => p.scheme)], 'standard');
-  const product = choice(x.product, FULFILMENT, 'fulfilment material');
-  const route = routeSnapshot(s, x.route);
+function routeSnapshot(s, selected, product) {
+  const route = Object.hasOwn(ROUTES, selected) ? { name: selected, version: 'Built-in 1', stages: ROUTES[selected] }
+    : record(s.routes, selected, 'route');
   if (product !== 'Traded goods' && route.stages.length) {
     ensure(route.stages.some(step => STAGES[step].output === product || [...WASH_STAGES, ...PRINT_STAGES].includes(step) &&
       STAGES[step].preserve && STAGES[step].primary.includes(product)),
       'The selected route does not produce ' + product + '.');
   }
+  return { route: route.name, routeVersion: route.version, stages: [...route.stages] };
+}
+
+function specification(s, x, previous = null, deferRoute = false) {
+  const unit = choice(x.unit, UNITS, 'order unit');
+  const qty = quantity(x.qty, 'Ordered quantity', unit);
+  const scheme = choice(x.scheme || 'Conventional', [...Object.keys(SCHEMES), ...s.policies.map(p => p.scheme)], 'standard');
+  const product = choice(x.product, FULFILMENT, 'fulfilment material');
+  const route = deferRoute && !x.route ? { route: '', routeVersion: '', stages: [] } : routeSnapshot(s, x.route, product);
   const bom = csvLines(x.bom, 'BOM', 2).map(([code, qty]) => {
     const item = s.items.find(i => norm(i.code) === norm(code));
     ensure(item, 'Unknown BOM item ' + code + '. Create it in Masters first.');
@@ -240,10 +258,14 @@ export function extraSchemes(s, list, primary) {
 export const schemesOf = row => [...new Set([row.scheme, ...(row.additionalSchemes ?? [])].filter(name => name && name !== 'Conventional'))].sort();
 
 export function newLine(s, x) {
+  return createDraftLine(s, x, false);
+}
+
+function createDraftLine(s, x, deferRoute) {
   const order = record(s.orders, x.orderId, 'buyer PO');
   const lineNo = req(x.lineNo || String(s.lines.filter(l => l.orderId === order.id).length + 1), 'PO line number', 40);
   ensure(!s.lines.some(l => l.orderId === order.id && norm(l.lineNo) === norm(lineNo)), 'Line number already exists on this PO.');
-  const row = { id: id(s, 'LINE'), orderId: order.id, lineNo, status: 'Draft', revision: 0, revisions: [], ...specification(s, x) };
+  const row = { id: id(s, 'LINE'), orderId: order.id, lineNo, status: 'Draft', revision: 0, revisions: [], ...specification(s, x, null, deferRoute) };
   s.lines.push(row);
   return row;
 }
@@ -258,6 +280,10 @@ function addRevision(row, ctx, note) {
 export function approveLine(s, x, ctx) {
   const line = record(s.lines, x.lineId, 'PO line');
   ensure(line.status === 'Draft', 'Only draft lines can be approved here.');
+  if (!line.route) {
+    ensure(x.route, 'Choose a production route before approving this PO line.');
+    Object.assign(line, routeSnapshot(s, x.route, line.product));
+  }
   line.status = 'Approved';
   line.revision = 1;
   addRevision(line, ctx, clean(x.notes));
@@ -354,13 +380,25 @@ export function importBuyerPo(s, x, ctx) {
     input.lines.every(row => row && typeof row === 'object' && !Array.isArray(row)), 'Select at least one valid buyer PO line.');
   ensure(Array.isArray(input.specifications) && input.specifications.length <= PO_IMPORT_MAX_LINES, 'Select valid technical specifications.');
   const po = req(x.po, 'Buyer PO number');
-  const buyer = x.buyerId === 'new' ? createPoBuyer(s, x, ctx) : party(s, x.buyerId, 'Buyer');
+  const buyerId = x.buyerId === 'new' ? createPoBuyer(s, x, ctx).id : x.buyerId;
+  if (buyerId) party(s, buyerId, 'Buyer');
   const document = ctx.document(x.document, ['buyer-po'], true);
   const annexes = poAnnexIds(x.annex).map(key => ctx.document(key, ['tech-pack'], true));
   const documents = [document, ...annexes];
-  let order = s.orders.find(row => row.buyerId === buyer.id && norm(row.po) === norm(po));
+  const buyerName = clean(x.buyerName, 200);
+  const sameNumber = s.orders.filter(row => norm(row.po) === norm(po));
+  const sameSource = row => row.document?.id === document.id || Boolean(document.sha256 && row.document?.sha256 === document.sha256);
+  let order = sameNumber.find(row => sameOrderBuyer(row, buyerId, buyerName));
+  if (!order && buyerId) {
+    const unlinked = sameNumber.filter(row => !row.buyerId && sameSource(row));
+    if (unlinked.length === 1) order = linkOrderBuyer(s, { orderId: unlinked[0].id, buyerId });
+  }
+  if (order && !buyerId && !buyerName) {
+    ensure(sameSource(order),
+      'Another unassigned PO has this number. Enter the buyer name to distinguish the two orders.');
+  }
   ensure(!order || order.kind === 'Goods', 'Select a goods PO for a garment import.');
-  if (!order) order = newOrder(s, { ...x, po, buyerId: buyer.id, kind: 'Goods', date: req(x.poDate, 'Buyer PO date', 10) }, ctx);
+  if (!order) order = newOrder(s, { ...x, po, buyerId, buyerName, kind: 'Goods', date: req(x.poDate, 'Buyer PO date', 10) }, ctx);
   if (!order.document) order.document = document;
   const details = poSourceDetails(input.details);
   if (!order.poDetails?.length && details.length) order.poDetails = details;
@@ -382,13 +420,14 @@ export function importBuyerPo(s, x, ctx) {
     if (!line) {
       const occupied = s.lines.filter(candidate => candidate.orderId === order.id);
       const { lineNo: buyerLineNo, ...identity } = variant;
-      line = newLine(s, { ...identity, lineNo: allocateBuyerLineNo(occupied, buyerLineNo, variant.size), orderId: order.id, unit: 'pcs',
+      line = createDraftLine(s, { ...identity, lineNo: allocateBuyerLineNo(occupied, buyerLineNo, variant.size), orderId: order.id, unit: 'pcs',
         qty: row.qty, price: row.price, delivery: req(row.delivery || x.shipDate, 'Delivery or ship-by date for ' + variant.size, 10),
         route: x.route, product: x.product, specRev,
-        approvedSpec: clean(row.description, 4000) || 'Imported buyer PO. Review the garment tech pack.' });
+        approvedSpec: clean(row.description, 4000) || 'Imported buyer PO. Review the garment tech pack.' }, true);
       if (buyerLineNo) line.buyerLineNo = buyerLineNo;
       existing.push(line);
     } else if (line.status === 'Draft') {
+      if (!line.route && x.route) Object.assign(line, routeSnapshot(s, x.route, line.product));
       for (const key of ['articleNo', 'articleName', 'clientOrderNo', 'colorCode', 'lot']) line[key] ||= variant[key];
     }
     const { draft, source } = importedTechPack(input.specifications, row.specKey, variant.size);

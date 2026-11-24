@@ -33,6 +33,7 @@ export function dispatch(s, x, ctx) {
     ensure(lot.material !== 'Packed carton' || !s.shipments.some(sh => sh.lotIds.includes(lot.id)), 'Carton ' + lot.id + ' has already been dispatched.');
     const line = record(s.lines, lineId, 'PO line');
     const order = record(s.orders, line.orderId, 'buyer PO');
+    ensure(order.buyerId, 'Link a buyer in the Buyer PO register before dispatching this order.');
     const pair = lotId + '|' + lineId;
     ensure(!keys.has(pair), 'List each lot and PO line combination once.');
     keys.add(pair);
@@ -155,6 +156,7 @@ export function issueInvoice(s, x, ctx) {
   unique(s.invoices, 'number', number, 'Invoice number already exists.');
   const sh = x.shipmentId ? record(s.shipments, x.shipmentId, 'shipment') : null;
   const order = sh ? null : record(s.orders, x.orderId, 'service order');
+  if (order) ensure(order.buyerId, 'Link a buyer in the Buyer PO register before invoicing this order.');
   if (order) ensure(order.kind === 'Service' && s.lines.some(l => l.orderId === order.id && l.status === 'Approved'), 'Approve a service order before billing it.');
   if (sh) ensure(!s.invoices.some(i => i.shipmentId === sh.id), 'This shipment already has an invoice.');
   const day = date(x.date);

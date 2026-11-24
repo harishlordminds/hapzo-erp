@@ -339,11 +339,12 @@ export function cashEntry(s, x, ctx) {
 }
 
 export function journal(s, x, ctx) {
+  const kind = choice(x.kind, ['Journal', 'Contra'], 'journal voucher type');
   const b = initBook(s);
   const lines = journalLines(x.entries, 'Journal');
   ensure(lines.every(row => !controls.has(row.a)), 'Use bills and settlements for receivable and payable ledgers.');
-  if (x.kind === 'Contra') ensure(lines.every(row => isCashLedger(ref(b.charts, row.a))), 'Contra vouchers only use cash or bank ledgers.');
-  return postVoucher(s, { ...voucherInput(x), type: x.kind === 'Contra' ? 'Contra' : 'Journal' }, lines, ctx);
+  if (kind === 'Contra') ensure(lines.every(row => isCashLedger(ref(b.charts, row.a))), 'Contra vouchers only use cash or bank ledgers.');
+  return postVoucher(s, { ...voucherInput(x), type: kind }, lines, ctx);
 }
 
 export function reverseVoucher(s, x, ctx) {

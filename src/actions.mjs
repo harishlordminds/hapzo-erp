@@ -29,7 +29,7 @@ function add(roles, methods) {
 }
 add([], { settings: commerce.saveSettings, 'po-number-reader': commerce.savePoNumberReader, 'master-delete': commerce.deleteMaster });
 add(['Merchandising'], {
-  'buyer-order': commerce.newOrder, 'po-buyer-create': commerce.createPoBuyer, 'po-revision': commerce.orderRevision,
+  'buyer-order': commerce.newOrder, 'po-buyer-create': commerce.createPoBuyer, 'link-order-buyer': commerce.linkOrderBuyer, 'po-revision': commerce.orderRevision,
   'po-line': commerce.newLine, 'approve-line': commerce.approveLine, 'revise-line': commerce.reviseLine,
   'garment-spec': commerce.saveGarmentSpec, [PO_IMPORT_ACTION]: commerce.importBuyerPo, 'garment-import-draft': commerce.saveImportDraft,
 });

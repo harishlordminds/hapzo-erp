@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
+import { passportPage } from './frontend/public-passport.mjs';
 import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
+
 import { spawn } from 'node:child_process';
 import QRCode from 'qrcode';
 import { Store, DATABASE_PATH } from './src/store.mjs';
@@ -9,64 +10,23 @@ import { permitted } from './src/actions.mjs';
 import { demo } from './src/demo.mjs';
 import { analyseEvidence } from './src/certificates.mjs';
 import { matchPoBuyer, PO_IMPORT_ACTION, poAnnexIds, poNumberReader } from './src/po-import.mjs';
-import { extractBuyerPo, extractFabricTechPack, extractPoBuyer, geminiModels, poAiStatus, setPoAiKey } from './src/po-ai.mjs';
+import { extractBuyerPo, extractFabricTechPack, extractPoBuyer, geminiCatalogue, geminiModels, poAiStatus, setPoAiKey } from './src/po-ai.mjs';
+import { saveGeminiModel } from './src/po-ai-env.mjs';
 import { inspectPoNumber } from './src/po-number.mjs';
 
 const local = '127.0.0.1';
-const port = Number(process.env.HAPZO_PORT || '4380');
+const port = Number(process.env.HAPZO_PORT || '5173');
 ensure(Number.isInteger(port) && port >= 1024 && port <= 65535, 'Choose a port between 1024 and 65535.');
 const origin = 'http://' + local + ':' + port;
 const publishedOrigin = process.env.HAPZO_PUBLIC_URL ? new URL(process.env.HAPZO_PUBLIC_URL).origin : origin;
 ensure(/^https?:\/\//.test(publishedOrigin), 'Use an HTTP or HTTPS origin in HAPZO_PUBLIC_URL.');
 const acceptedHosts = new Set([new URL(origin).host, 'localhost:' + port, new URL(publishedOrigin).host]);
-const require = createRequire(import.meta.url);
-const assets = new Map([
-  ['/', ['public/index.html', 'text/html; charset=utf-8']],
-  ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']],
-  ['/ui.js', ['public/ui.js', 'text/javascript; charset=utf-8']],
-  ['/fabric-ui.js', ['public/fabric-ui.js', 'text/javascript; charset=utf-8']],
-  ['/garment-ui.js', ['public/garment-ui.js', 'text/javascript; charset=utf-8']],
-  ['/pages.js', ['public/pages.js', 'text/javascript; charset=utf-8']],
-  ['/finance-ui.js', ['public/finance-ui.js', 'text/javascript; charset=utf-8']],
-  ['/compliance-ui.js', ['public/compliance-ui.js', 'text/javascript; charset=utf-8']],
-  ['/yarn-dyeing-ui.js', ['public/yarn-dyeing-ui.js', 'text/javascript; charset=utf-8']],
-  ['/washing-ui.js', ['public/washing-ui.js', 'text/javascript; charset=utf-8']],
-  ['/printing-ui.js', ['public/printing-ui.js', 'text/javascript; charset=utf-8']],
-  ['/garment-production-ui.js', ['public/garment-production-ui.js', 'text/javascript; charset=utf-8']],
-  ['/style.css', ['public/style.css', 'text/css; charset=utf-8']],
-  ['/src/model.mjs', ['src/model.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/fabric.mjs', ['src/fabric.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/garment.mjs', ['src/garment.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/po-import.mjs', ['src/po-import.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/po-process.mjs', ['src/po-process.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/claim-scope.mjs', ['src/claim-scope.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/commerce.mjs', ['src/commerce.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/finance.mjs', ['src/finance.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/standards.mjs', ['src/standards.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/passports.mjs', ['src/passports.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/fulfilment.mjs', ['src/fulfilment.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/stock.mjs', ['src/stock.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/routes.mjs', ['src/routes.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/yarn-dyeing.mjs', ['src/yarn-dyeing.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/process-batch.mjs', ['src/process-batch.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/process-materials.mjs', ['src/process-materials.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/printing.mjs', ['src/printing.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/fibre.mjs', ['src/fibre.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/spinning.mjs', ['src/spinning.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/yarn-allocation.mjs', ['src/yarn-allocation.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/knitting.mjs', ['src/knitting.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/weaving.mjs', ['src/weaving.mjs', 'text/javascript; charset=utf-8']],
-  ['/src/fabric-dyeing.mjs', ['src/fabric-dyeing.mjs', 'text/javascript; charset=utf-8']],
-  ['/fabric-dyeing-ui.js', ['public/fabric-dyeing-ui.js', 'text/javascript; charset=utf-8']],
-  ['/src/fabric-finishing.mjs', ['src/fabric-finishing.mjs', 'text/javascript; charset=utf-8']],
-  ['/fabric-finishing-ui.js', ['public/fabric-finishing-ui.js', 'text/javascript; charset=utf-8']],
-  ['/weaving-ui.js', ['public/weaving-ui.js', 'text/javascript; charset=utf-8']],
-  ['/knitting-ui.js', ['public/knitting-ui.js', 'text/javascript; charset=utf-8']],
-  ['/spinning-ui.js', ['public/spinning-ui.js', 'text/javascript; charset=utf-8']],
-  ['/process-ui.js', ['public/process-ui.js', 'text/javascript; charset=utf-8']],
-  ['/fibre-ui.js', ['public/fibre-ui.js', 'text/javascript; charset=utf-8']],
-  ['/qr-reader.js', [require.resolve('jsqr'), 'text/javascript; charset=utf-8']],
-]);
+const assetTypes = { html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8',
+  mjs: 'text/javascript; charset=utf-8', pdf: 'application/pdf', wasm: 'application/wasm', json: 'application/json; charset=utf-8' };
+
+function localShell(html) {
+  return html.replace('<html lang="en">', '<html lang="en" data-runtime="node">').replace('HAPZO Frontend Preview', 'HAPZO Local');
+}
 const store = new Store();
 const attempts = new Map();
 const activeImports = new Map();
@@ -99,8 +59,11 @@ function sessionInfo(session) {
   };
 }
 function configuredPoReader(session, expected) {
-  const reader = poNumberReader(store.readState(session.company_id).settings);
-  ensure(expected === reader || expected === undefined && reader !== 'hosted-oxr',
+  const settings = store.readState(session.company_id).settings;
+  const reader = poNumberReader(settings);
+  // Tabs opened before the built-in reader became the default still send the old local default.
+  const previousDefault = !settings.poNumberReader && expected === 'local-oxr';
+  ensure(expected === reader || previousDefault || expected === undefined && reader !== 'hosted-oxr',
     'The buyer PO reader changed. Review the current reader before uploading again.', 409, 'po-reader-changed');
   return reader;
 }
@@ -149,17 +112,6 @@ function throttle(key) {
   count.n++;
   attempts.set(key, count);
 }
-const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-function passportPage(p) {
-  const available = p?.state === 'Published';
-  const content = available
-    ? '<p class="muted">Batch ' + esc(p.batch) + ' · Version ' + esc(p.version) + ' · ' + esc(p.published) + '</p><h2>' + esc(p.profile) + '</h2><dl class="public-fields">' +
-      p.fields.map(f => '<div><dt>' + esc(f.name) + '</dt><dd>' + esc(f.value) + '</dd></div>').join('') + '</dl>'
-    : '<p>' + (p ? 'This passport is suspended.' : 'There is no published passport at this address.') + '</p>';
-  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
-    '<title>HAPZO Digital Product Passport</title><link rel="stylesheet" href="/style.css"></head><body class="public-page">' +
-    '<article class="paper"><div class="brand"><span class="mark">H</span><span>HAPZO</span></div><h1>Digital Product Passport</h1>' + content + '</article></body></html>';
-}
 function filename(label) {
   return encodeURIComponent(label).replace(/['()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 }
@@ -173,9 +125,22 @@ const server = createServer(async (req, res) => {
     ensure(acceptedHosts.has(req.headers.host), 'Open the configured HAPZO address.', 403, 'host');
     const url = new URL(req.url, origin);
     const path = url.pathname;
-    if (req.method === 'GET' && assets.has(path)) {
-      const [file, type] = assets.get(path);
-      return reply(res, 200, type, await readFile(file === require.resolve('jsqr') ? file : new URL(file, import.meta.url)));
+    if (vite && !path.startsWith('/api/') && !path.startsWith('/p/')) {
+      // Vite injects the React refresh preamble and development styles on this local listener.
+      res.setHeader('Content-Security-Policy', res.getHeader('Content-Security-Policy')
+        .replace("script-src 'self'", "script-src 'self' 'unsafe-inline'").replace("style-src 'self'", "style-src 'self' 'unsafe-inline'"));
+      return vite.middlewares(req, res, () => json(res, 404, { error: 'Page not found.' }));
+    }
+    if (['GET', 'HEAD'].includes(req.method) && (path === '/' || path === '/index.html' || path === '/style.css' || path === '/demo-state.json' ||
+        /^\/assets\/[\w.-]+\.(?:m?js|css|wasm)$/.test(path) || /^\/sample-orders\/[\w-]+\.pdf$/.test(path))) {
+      const file = path === '/' ? 'index.html' : path.slice(1);
+      let bytes;
+      try { bytes = await readFile(new URL('./build/' + file, import.meta.url)); }
+      catch (error) {
+        if (error.code === 'ENOENT') return json(res, 404, { error: 'File not found.' });
+        throw error;
+      }
+      return reply(res, 200, assetTypes[file.split('.').at(-1)], file === 'index.html' ? localShell(bytes.toString('utf8')) : bytes);
     }
     if (req.method === 'GET' && path === '/api/health') return json(res, 200, { service: 'hapzo-local', ready: true });
     if (req.method === 'GET' && /^\/p\/[\w-]{32}$/.test(path)) {
@@ -207,7 +172,10 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && path === '/api/gemini-models') {
       ensure(permitted(session.role).includes(PO_IMPORT_ACTION), 'This action requires the merchandising role.', 403, 'role');
       const job = activeImports.get(session.company_id);
-      return json(res, 200, { models: geminiModels(session), retry: job?.id && job.id === url.searchParams.get('request') ? job.retry : null });
+      const requestId = url.searchParams.get('request');
+      if (requestId) return json(res, 200, { models: geminiModels(session), retry: job?.id === requestId ? job.retry : null });
+      const canManage = session.role === 'Admin' && [new URL(origin).host, 'localhost:' + port].includes(req.headers.host);
+      return json(res, 200, { ...await geminiCatalogue(session, url.searchParams.has('refresh')), canManage });
     }
     if (req.method === 'GET' && path === '/api/members') return json(res, 200, { members: store.listMembers(session) });
     if (req.method === 'GET' && path === '/api/export') {
@@ -254,10 +222,13 @@ const server = createServer(async (req, res) => {
       ensure(data.companyId === session.company_id, 'The selected workspace changed. Reload before posting.', 409, 'workspace-changed');
       if (path === '/api/actions') return json(res, 200, store.post(session, data));
       if (path === '/api/documents') return json(res, 201, store.addDocument(session, data));
-      if (path === '/api/po-ai-key') {
+      if (path === '/api/po-ai-key' || path === '/api/gemini-model') {
         store.requireAdmin(session);
         ensure([new URL(origin).host, 'localhost:' + port].includes(req.headers.host), 'Configure the AI provider key on this computer at ' + origin + '.', 403, 'host');
-        return json(res, 200, { poAi: setPoAiKey(session, data) });
+        if (path === '/api/po-ai-key') return json(res, 200, { poAi: setPoAiKey(session, data) });
+        ensure(geminiModels(session).some(model => model.id === data.model), 'Choose a listed Gemini model.');
+        saveGeminiModel(data.model);
+        return json(res, 200, { defaultModel: data.model, models: geminiModels(session) });
       }
       if (path === '/api/po-number') {
         ensure(permitted(session.role).includes('buyer-order'), 'This action requires the merchandising role.', 403, 'role');
@@ -330,6 +301,12 @@ const server = createServer(async (req, res) => {
   }
 });
 
+// Share one HTTP server so API sessions, document uploads and Vite HMR use the same origin.
+const vite = process.argv.includes('--dev') ? await (await import('vite')).createServer({
+  server: { port, middlewareMode: true, ws: { server } },
+  appType: 'mpa',
+  plugins: [{ name: 'hapzo-local-shell', transformIndexHtml: localShell }],
+}) : null;
 server.requestTimeout = 120_000;
 server.listen(port, local, () => {
   console.log('HAPZO Local · ' + origin);
@@ -342,4 +319,7 @@ server.listen(port, local, () => {
     browser.unref();
   }
 });
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => { store.db.close(); process.exit(0); }));
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => {
+  await vite?.close();
+  server.close(() => { store.db.close(); process.exit(0); });
+});

@@ -1,9 +1,10 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { DomainError, ensure } from './model.mjs';
 import { PO_AI_PROVIDERS, PO_IMPORT_MAX_LINES, buyerIdentitySchema, extractionSchema, fabricExtractionSchema, readBuyerIdentity,
-  reviewExtraction, reviewFabricExtraction } from './po-import.mjs';
+  poNumberReader, reviewExtraction, reviewFabricExtraction } from './po-import.mjs';
 import { applyPoNumber, inspectPoDocument, readLocalDocumentLayout } from './po-number.mjs';
 import { positionText, readDocumentPages } from './document-text.mjs';
-import { geminiConnection, saveGeminiKey } from './po-ai-env.mjs';
+import { defaultGeminiModel, geminiConnection, saveGeminiKey } from './po-ai-env.mjs';
 
 const liveKeys = new Map();
 const buyerReads = new Map();
@@ -11,12 +12,48 @@ const modelResults = new Map();
 const defaultProvider = 'gemini';
 const models = Object.freeze({ 'gemini-3.8-flash': 'Gemini 3.8 Flash', 'gemini-3.6-flash': 'Gemini 3.6 Flash' });
 const modelResultLifetime = 15 * 60_000;
+let catalogue;
+
+export async function geminiCatalogue(session, refresh = false) {
+  const { key } = geminiConnection();
+  let issue;
+  if (key && (refresh || catalogue?.key !== key || Date.now() - catalogue.at > modelResultLifetime)) {
+    try {
+      const entries = {};
+      let pageToken;
+      do {
+        const url = new URL('https://generativelanguage.googleapis.com/v1beta/models');
+        url.searchParams.set('pageSize', '1000');
+        if (pageToken) url.searchParams.set('pageToken', pageToken);
+        const response = await fetch(url, { headers: { 'x-goog-api-key': key }, redirect: 'error', signal: AbortSignal.timeout(12000) });
+        if (!response.ok) throw providerError('Gemini', response.status);
+        const page = await response.json();
+        for (const model of page.models || []) {
+          const id = model.name?.replace(/^models\//, '');
+          if (/^gemini-[\w.-]+$/.test(id) && !/embed|image|tts|audio|robotics|live|computer-use/i.test(id) &&
+              model.supportedGenerationMethods?.includes('generateContent')) entries[id] = model.displayName || id;
+        }
+        pageToken = page.nextPageToken;
+      } while (pageToken);
+      if (!Object.keys(entries).length) throw new Error('No document models');
+      if (geminiConnection().key === key) catalogue = { key, entries, at: Date.now() };
+    } catch (error) {
+      issue = error instanceof DomainError ? error.message : 'Could not load the Gemini model list. Check the connection and refresh.';
+    }
+  }
+  const available = geminiModels(session);
+  return { models: available, defaultModel: available[0].id, source: key && catalogue?.key === key ? 'account' : 'builtin', issue };
+}
 
 export function geminiModels(session) {
-  const defaultId = process.env.HAPZO_GEMINI_MODEL?.trim().replace(/^models\//, '') || 'gemini-3.8-flash';
-  return [...new Set([defaultId, ...Object.keys(models)])].map(id => {
+  const defaultId = defaultGeminiModel();
+  const account = catalogue && catalogue.key === geminiConnection().key;
+  const choices = account ? catalogue.entries : models;
+  const supportedDefaults = Object.keys(models).filter(id => Object.hasOwn(choices, id));
+  const ids = [...(!account || Object.hasOwn(choices, defaultId) ? [defaultId] : []), ...supportedDefaults, ...Object.keys(choices)];
+  return [...new Set(ids)].map(id => {
     const recent = modelResults.get(session.company_id + '|' + id);
-    return { id, label: Object.hasOwn(models, id) ? models[id] : id,
+    return { id, label: choices[id] || id,
       status: recent && Date.now() - recent.at < modelResultLifetime ? recent.status : 'untested' };
   });
 }
@@ -74,6 +111,7 @@ export function setPoAiKey(session, input) {
   if (input.remove === 'yes') {
     if (input.scope === 'default') {
       saveGeminiKey('');
+        catalogue = undefined;
       modelResults.clear();
       buyerReads.clear();
     }
@@ -86,6 +124,7 @@ export function setPoAiKey(session, input) {
     ensure(valid, 'Enter a valid ' + PO_AI_PROVIDERS[provider] + ' API key.');
     if (provider === 'gemini') {
       saveGeminiKey(key);
+        catalogue = undefined;
       liveKeys.delete(session.company_id);
       modelResults.clear();
       buyerReads.clear();
@@ -147,13 +186,21 @@ function geminiFallbackRequest(key, documents, { model, systemInstruction = inst
   };
 }
 
-function providerError(name, status, error) {
+function providerError(name, status, error, retryAfter) {
   const details = Array.isArray(error?.details) ? error.details : [];
   if (status === 401 || status === 403 || details.some(row => typeof row?.reason === 'string' && row.reason.startsWith('API_KEY_'))) {
     return new DomainError(name + ' rejected this key or project access. Check HAPZO’s local key configuration.', 422, 'ai-key');
   }
   if (error?.code === 'insufficient_quota') return new DomainError('The ' + name + ' project has no available API quota. Check its billing and limits.', 422, 'ai-quota');
   if (status === 429) return new DomainError(name + ' reached an API usage limit. Check the project quota or try again shortly.', 429, 'ai-rate');
+  if (status === 503) {
+    const issue = new DomainError(name + ' is temporarily unavailable.', 503, 'ai-unavailable');
+    if (retryAfter) {
+      const ms = /^\d+$/.test(retryAfter) ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now();
+      if (Number.isFinite(ms)) issue.retryAfterMs = Math.max(0, ms);
+    }
+    return issue;
+  }
   if (status === 404) return new DomainError('The configured ' + name + ' model is unavailable for this project.', 422, 'ai-model');
   if (status === 408 || status === 504) return new DomainError(name + ' timed out reading the file.', 504, 'ai-timeout');
   if (status === 400 || status === 413) {
@@ -196,10 +243,10 @@ async function requestJson(provider, request, timeoutMs) {
   } catch (error) {
     const timeout = error.name === 'TimeoutError' || error.name === 'AbortError';
     if (timeout) throw new DomainError(name + ' timed out reading the file.', 504, 'ai-timeout');
-    if (response && !response.ok) throw providerError(name, response.status);
+    if (response && !response.ok) throw providerError(name, response.status, null, response.headers.get('retry-after'));
     throw new DomainError('HAPZO could not read the ' + name + ' response. Check the connection and try again.', 502, 'ai-provider');
   }
-  if (!response.ok) throw providerError(name, response.status, result?.error);
+  if (!response.ok) throw providerError(name, response.status, result?.error, response.headers.get('retry-after'));
   ensure(request.format === 'gemini-generate' || result?.status === 'completed',
     name + ' could not finish this extraction. Try a shorter document.', 422, 'ai-incomplete');
   const output = extractionText(provider, result, request.format);
@@ -218,7 +265,7 @@ function configuredConnection(session, expectedProvider) {
 
 function retryStatus(error) {
   if (error.code === 'ai-timeout') return 'timeout';
-  if (['ai-model', 'ai-rate', 'ai-provider'].includes(error.code)) return 'unavailable';
+  if (['ai-model', 'ai-rate', 'ai-provider', 'ai-unavailable'].includes(error.code)) return 'unavailable';
   if (error.providerStatus === 400 || ['ai-incomplete', 'ai-result'].includes(error.code)) return 'failed';
   return '';
 }
@@ -229,7 +276,7 @@ async function readGemini(session, key, documents, options, currentKey) {
   const first = options.geminiModel ? choices.find(choice => choice.id === options.geminiModel) : preferred(choices);
   ensure(first, 'Choose one of the listed Gemini models.', 422, 'ai-model');
   const alternate = preferred(choices.filter(choice => choice.id !== first.id));
-  const attempts = [first, alternate].filter(Boolean);
+  const attempts = [first, alternate || first];
   const hasWorkbook = documents.some(({ doc }) => doc.mime.endsWith('spreadsheetml.sheet'));
   const timeoutMs = options.timeoutMs ?? 110_000;
   let retry;
@@ -244,9 +291,12 @@ async function readGemini(session, key, documents, options, currentKey) {
       const status = retryStatus(error);
       if (status) recordModelResult(session, model.id, status);
       const next = attempts[index + 1];
-      if (!status || !next) throw error;
+      if (!status || !next || (!alternate && error.code !== 'ai-unavailable')) throw error;
+      // Leave long provider cooldowns to a later import so the PDF reader can take over now.
+      if (error.retryAfterMs > 5000) throw error;
       retry = { from: model.label, to: next.label, status };
       options.onRetry?.(retry);
+      if (error.code === 'ai-unavailable') await delay(error.retryAfterMs ?? 1000 + Math.random() * 250);
     }
   }
 }
@@ -270,7 +320,7 @@ function layoutText(pages, subject, supplemental = []) {
     (transcript.length > 120_000 ? '\n[Layout excerpt. Read the remaining pages from the original.]' : '') : '';
 }
 
-export async function extractBuyerPo(session, documents, expectedProvider = defaultProvider, reader = 'local-oxr', options = {}) {
+export async function extractBuyerPo(session, documents, expectedProvider = defaultProvider, reader = poNumberReader(), options = {}) {
   const connection = configuredConnection(session, expectedProvider);
   const [original, ...annexes] = documents;
   const { number, layout } = await inspectPoDocument(original.doc, reader);

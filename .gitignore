@@ -6,3 +6,6 @@ data/
 *.sqlite-shm
 *.sqlite-wal
 *.log
+
+# Local Netlify folder
+.netlify

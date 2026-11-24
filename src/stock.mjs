@@ -274,12 +274,13 @@ export function dispose(s, x, ctx) {
 }
 
 export function reserveStock(s, x, ctx) {
+  const mode = choice(x.mode ?? 'Reserve', ['Reserve', 'Release'], 'reservation action');
   const lot = record(s.lots, x.lotId, 'lot');
   const line = record(s.lines, x.lineId, 'PO line');
   ensure(line.status === 'Approved', 'Approve the PO line before reserving stock.');
   const amount = quantity(x.qty, 'Reservation quantity', lot.unit);
   const old = lot.reservations.find(r => r.lineId === line.id);
-  if (x.mode === 'Release') {
+  if (mode === 'Release') {
     ensure(old && amount <= old.qty, 'Release must be within the existing reservation.');
     old.qty = round(old.qty - amount);
     lot.reservations = lot.reservations.filter(r => r.qty > 0);
@@ -292,7 +293,7 @@ export function reserveStock(s, x, ctx) {
     else lot.reservations.push({ lineId: line.id, qty: amount });
     ensure(committedStock(lot) <= lot.qty, 'Reservation exceeds uncommitted stock.');
   }
-  return post(s, x.mode === 'Release' ? 'Release reservation' : 'Reserve', ctx, {
+  return post(s, mode === 'Release' ? 'Release reservation' : 'Reserve', ctx, {
     date: date(), output: lot.id, lineId: line.id, qty: amount, unit: lot.unit,
   });
 }

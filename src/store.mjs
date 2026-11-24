@@ -283,7 +283,7 @@ export class Store {
   canReadDocument(session, row) {
     if (row.bucket === 'tech-pack' && ['Production', 'Quality', 'Stores'].includes(session.role)) return true;
     if (ownerRole(session) || internalDocs[row.bucket]?.includes(session.role)) return true;
-    if (session.role !== 'Buyer') return false;
+    if (session.role !== 'Buyer' || !session.buyer_id) return false;
     const s = this.readState(session.company_id);
     const owned = [...s.orders, ...s.shipments, ...s.invoices].filter(doc => doc.buyerId === session.buyer_id);
     return owned.some(doc => [doc.document, doc.deliveryDocument, ...(doc.revisions ?? []).map(r => r.document)].some(x => x?.id === row.id));
@@ -335,12 +335,13 @@ export class Store {
     return s;
   }
   buyerView(session, s) {
-    const orders = s.orders.filter(o => o.buyerId === session.buyer_id).map(({ poDetails, ...order }) => order);
+    const owned = row => row.buyerId && row.buyerId === session.buyer_id;
+    const orders = s.orders.filter(owned).map(({ poDetails, ...order }) => order);
     const ids = new Set(orders.map(o => o.id));
     const lines = s.lines.filter(l => ids.has(l.orderId) && l.status === 'Approved').map(
       ({ id, orderId, lineNo, style, articleNo, articleName, clientOrderNo, color, colorCode, size, qty, unit, price, delivery, schedule, status }) =>
         ({ id, orderId, lineNo, style, articleNo, articleName, clientOrderNo, color, colorCode, size, qty, unit, price, delivery, schedule, status }));
-    const shipments = s.shipments.filter(sh => sh.buyerId === session.buyer_id);
+    const shipments = s.shipments.filter(owned);
     const shipped = new Set(shipments.flatMap(sh => sh.lotIds));
     const passports = s.passports.filter(p => p.status === 'Published' && shipped.has(p.lotId))
       .map(({ id, lotId, token, version, status }) => ({ id, lotId, token, version, status }));
@@ -351,7 +352,7 @@ export class Store {
           ...carton, contents: contents.map(({ lotId, ...sku }) => sku),
         })),
       })),
-      invoices: s.invoices.filter(inv => inv.buyerId === session.buyer_id),
+      invoices: s.invoices.filter(owned),
     };
   }
 }

@@ -5,7 +5,7 @@ export const PO_IMPORT_MAX_LINES = 50;
 export const PO_IMPORT_ACTION = 'import-buyer-po';
 export const PO_AI_PROVIDERS = { gemini: 'Gemini', openai: 'OpenAI' };
 export const PO_NUMBER_READERS = { 'local-oxr': 'Local SoMark OXR', 'hosted-oxr': 'Hosted SoMark OXR', 'local-ocr': 'Local PDF text and OCR' };
-export const poNumberReader = settings => settings?.poNumberReader || 'local-oxr';
+export const poNumberReader = settings => settings?.poNumberReader || 'local-ocr';
 
 export function poAnnexIds(value) {
   ensure(value == null || typeof value === 'string', 'Choose uploaded technical sheets or annexes.');
