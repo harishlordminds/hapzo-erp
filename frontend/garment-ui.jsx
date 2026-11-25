@@ -1,5 +1,5 @@
 import { EditableContent, RowList, RowTemplate, appendRow, joinContent, setContents } from './react-ui.jsx';
-import { ref, norm, CURRENCIES, FULFILMENT, ROUTES } from '../src/model.mjs';
+import { ref, norm, CURRENCIES, FULFILMENT, ROUTES } from '../src/model.js';
 import {
   AREA_BASES,
   FABRIC_ROLES,
@@ -9,15 +9,15 @@ import {
   garmentPlan,
   garmentSpecification,
   garmentTargetsForLot,
-} from '../src/garment.mjs';
-import { FABRIC_TYPES, FABRIC_CONDITIONS, YARN_COUNT_UNITS } from '../src/fabric.mjs';
+} from '../src/garment.js';
+import { FABRIC_TYPES, FABRIC_CONDITIONS, YARN_COUNT_UNITS } from '../src/fabric.js';
 import {
   matchPoBuyer,
   PO_AI_PROVIDERS,
   PO_IMPORT_ACTION,
   PO_NUMBER_READERS,
   poNumberReader,
-} from '../src/po-import.mjs';
+} from '../src/po-import.js';
 import {
   componentConstructionFields,
   componentConstructionInput,

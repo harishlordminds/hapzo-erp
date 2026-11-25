@@ -1,18 +1,18 @@
 import { EditableContent, joinContent } from './react-ui.jsx';
-import { UNITS, STAGES, DPP_FIELDS, ref, norm, genealogy, sum, freeStock, ROLES } from '../src/model.mjs';
-import { schemesOf } from '../src/commerce.mjs';
-import { APPLICABILITY, PASSPORT_PRODUCTS } from '../src/passports.mjs';
-import { lineRemaining } from '../src/process-batch.mjs';
-import { EVIDENCE_KINDS, EVIDENCE_ROLES, evidenceProgrammes } from '../src/standards.mjs';
+import { UNITS, STAGES, DPP_FIELDS, ref, norm, genealogy, sum, freeStock, ROLES } from '../src/model.js';
+import { schemesOf } from '../src/commerce.js';
+import { APPLICABILITY, PASSPORT_PRODUCTS } from '../src/passports.js';
+import { lineRemaining } from '../src/process-batch.js';
+import { EVIDENCE_KINDS, EVIDENCE_ROLES, evidenceProgrammes } from '../src/standards.js';
 import {
   CLAIM_POINTS,
   CLAIM_PROGRAMMES,
   CLAIM_REVIEW_METHODS,
   CLAIM_SCOPES,
   productClaimNames,
-} from '../src/claim-scope.mjs';
+} from '../src/claim-scope.js';
 import { inspectionChecks, resultStatus, shipmentListTable } from './pages.jsx';
-import { PO_NUMBER_READERS, poNumberReader } from '../src/po-import.mjs';
+import { PO_NUMBER_READERS, poNumberReader } from '../src/po-import.js';
 import { finishingTracePanel } from './fabric-finishing-ui.jsx';
 import { printingTracePanel } from './printing-ui.jsx';
 import { garmentTracePanel } from './garment-production-ui.jsx';

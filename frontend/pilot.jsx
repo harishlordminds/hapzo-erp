@@ -1,3 +1,4 @@
+import './pilot.css';
 import { SelectControl, joinContent, renderPilot } from './react-ui.jsx';
 ('use strict');
 const STORE = 'hapzo-decaste-erp-v2';

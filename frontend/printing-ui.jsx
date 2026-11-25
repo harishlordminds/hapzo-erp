@@ -1,8 +1,8 @@
 import { joinContent, setContents } from './react-ui.jsx';
-import { PRINT_STAGES, STAGES, ref, sum } from '../src/model.mjs';
-import { stageLabel } from '../src/routes.mjs';
-import { EMBROIDERY, PRINTING, PRINT_FINISHES, unprintedQty } from '../src/printing.mjs';
-import { lineRemaining } from '../src/process-batch.mjs';
+import { PRINT_STAGES, STAGES, ref, sum } from '../src/model.js';
+import { stageLabel } from '../src/routes.js';
+import { EMBROIDERY, PRINTING, PRINT_FINISHES, unprintedQty } from '../src/printing.js';
+import { lineRemaining } from '../src/process-batch.js';
 import {
   h,
   fmt,

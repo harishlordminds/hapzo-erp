@@ -1,6 +1,6 @@
 import { joinContent } from './react-ui.jsx';
-import { ref, sum } from '../src/model.mjs';
-import { lineRemaining } from '../src/process-batch.mjs';
+import { ref, sum } from '../src/model.js';
+import { lineRemaining } from '../src/process-batch.js';
 import {
   h,
   fmt,

@@ -1,5 +1,5 @@
 import { EditableContent, joinContent, setContents } from './react-ui.jsx';
-import { ref, ROUTES } from '../src/model.mjs';
+import { ref, ROUTES } from '../src/model.js';
 import {
   FABRIC_TYPES,
   FABRIC_CONDITIONS,
@@ -14,9 +14,9 @@ import {
   fabricSpecification,
   fabricTargetsForLot,
   toleranceField,
-} from '../src/fabric.mjs';
-import { applyKnitYarnSystems } from '../src/garment.mjs';
-import { PO_AI_PROVIDERS, PO_IMPORT_ACTION } from '../src/po-import.mjs';
+} from '../src/fabric.js';
+import { applyKnitYarnSystems } from '../src/garment.js';
+import { PO_AI_PROVIDERS, PO_IMPORT_ACTION } from '../src/po-import.js';
 import {
   badge,
   button,

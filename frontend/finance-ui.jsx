@@ -1,5 +1,5 @@
 import { EditableContent, RowList, RowTemplate, SelectControl, appendRow, joinContent, setContents } from './react-ui.jsx';
-import { CURRENCIES, norm, ref, today, validDate } from '../src/model.mjs';
+import { CURRENCIES, norm, ref, today, validDate } from '../src/model.js';
 import {
   ACCOUNTS,
   LEDGER_GROUPS,
@@ -14,8 +14,8 @@ import {
   orderedVouchers,
   partyLedgers,
   settlementAllocations,
-} from '../src/finance.mjs';
-import { lotCost } from '../src/fulfilment.mjs';
+} from '../src/finance.js';
+import { lotCost } from '../src/fulfilment.js';
 import {
   h,
   valueOf,

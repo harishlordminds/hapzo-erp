@@ -1,5 +1,5 @@
 import { SelectControl, joinContent } from './react-ui.jsx';
-import { today, ref } from '../src/model.mjs';
+import { today, ref } from '../src/model.js';
 export const h = (input) => String(input ?? '');
 export const fmt = (n) =>
   Number(n ?? 0).toLocaleString('en-IN', {

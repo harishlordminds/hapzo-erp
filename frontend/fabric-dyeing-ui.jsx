@@ -1,7 +1,7 @@
 import { joinContent } from './react-ui.jsx';
-import { ref } from '../src/model.mjs';
-import { schemeNames } from '../src/standards.mjs';
-import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.mjs';
+import { ref } from '../src/model.js';
+import { schemeNames } from '../src/standards.js';
+import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.js';
 import {
   FABRIC_DYEING,
   FABRIC_KINDS,
@@ -10,7 +10,7 @@ import {
   DRY_BASIS,
   commissionBalance,
   fabricKind,
-} from '../src/fabric-dyeing.mjs';
+} from '../src/fabric-dyeing.js';
 import {
   batchDetail,
   lotHistory,

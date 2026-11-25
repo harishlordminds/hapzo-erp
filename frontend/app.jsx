@@ -1,5 +1,5 @@
 import { SelectControl, appendContents, joinContent, removeRow, renderApp, renderDialog, setContents } from './react-ui.jsx';
-import { norm, ref, STAGES, validDate } from '../src/model.mjs';
+import { norm, ref, STAGES, validDate } from '../src/model.js';
 import {
   can,
   h,
@@ -38,9 +38,9 @@ import * as ffUi from './fabric-finishing-ui.jsx';
 import * as washUi from './washing-ui.jsx';
 import * as printUi from './printing-ui.jsx';
 import * as garmentProduction from './garment-production-ui.jsx';
-import { same } from '../src/claim-scope.mjs';
-import { PO_IMPORT_ACTION } from '../src/po-import.mjs';
-import { previewApi, previewFile } from './preview-store.mjs';
+import { same } from '../src/claim-scope.js';
+import { PO_IMPORT_ACTION } from '../src/po-import.js';
+import { previewApi, previewFile } from './preview-store.js';
 import jsQR from 'jsqr';
 const nodeWorkspace = document.documentElement.dataset.runtime === 'node';
 const localWorkspace = nodeWorkspace && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
@@ -297,7 +297,7 @@ function api(url, data) {
   return useSampleData ? previewApi(url, data) : request(url, data);
 }
 async function localPoDraft(file, id, aiError) {
-  const { readBuyerPdf } = await import('./po-reader.mjs');
+  const { readBuyerPdf } = await import('./po-reader.js');
   const draft = await readBuyerPdf(file, { id, label: file.name });
   if (aiError) {
     draft.readNotice = (aiError.code === 'ai-unavailable' ? aiError.message + ' ' : '') +
@@ -604,7 +604,7 @@ function Workspace({ selected }) {
     '',
   );
   return (
-    <div className="shell" onClick={handleClick} onSubmit={handleSubmit} onInput={handleInput} onChange={handleChange}>
+    <div className="shell grid min-h-screen" onClick={handleClick} onSubmit={handleSubmit} onInput={handleInput} onChange={handleChange}>
       <aside className="sidebar">
         <div className="sidebar-brand-row">
           <a className="brand" href={'#' + (app.user.role === 'Buyer' ? 'buyer' : 'overview')}>
@@ -638,7 +638,7 @@ function Workspace({ selected }) {
           </span>
         </div>
       </aside>
-      <main className="main">
+      <main className="main min-w-0">
         <header className="topbar">
           <label className="top-search">
             <span aria-hidden="true">⌕</span>

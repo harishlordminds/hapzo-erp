@@ -20,7 +20,7 @@ if not exist "node_modules\vite\package.json" (
 echo Keep this window open while using HAPZO. Press Ctrl+C to stop the local server.
 call npm.cmd run build
 if errorlevel 1 goto fail
-node server.mjs --open
+node server.js --open
 if errorlevel 1 goto fail
 exit /b 0
 

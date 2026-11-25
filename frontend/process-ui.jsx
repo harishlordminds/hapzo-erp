@@ -1,9 +1,9 @@
 import { joinContent } from './react-ui.jsx';
 // Views shared by process screens (yarn dyeing, ginning, fibre preparation).
-import { ref, genealogy, today } from '../src/model.mjs';
-import { schemesOf } from '../src/commerce.mjs';
-import { stageLabel } from '../src/routes.mjs';
-import { batchSummary, lineRemaining, lineRemainingKg, wipLabel } from '../src/process-batch.mjs';
+import { ref, genealogy, today } from '../src/model.js';
+import { schemesOf } from '../src/commerce.js';
+import { stageLabel } from '../src/routes.js';
+import { batchSummary, lineRemaining, lineRemainingKg, wipLabel } from '../src/process-batch.js';
 import {
   h,
   fmt,

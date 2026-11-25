@@ -1,7 +1,7 @@
 import { joinContent } from './react-ui.jsx';
-import { ref } from '../src/model.mjs';
-import { schemeNames } from '../src/standards.mjs';
-import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.mjs';
+import { ref } from '../src/model.js';
+import { schemeNames } from '../src/standards.js';
+import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.js';
 import {
   GINNING,
   PREPARATION,
@@ -12,7 +12,7 @@ import {
   LINT_MATERIALS,
   fibreSettings,
   scanRecord,
-} from '../src/fibre.mjs';
+} from '../src/fibre.js';
 import {
   stockHint,
   batchDetail,

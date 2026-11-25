@@ -1,7 +1,7 @@
 import { joinContent } from './react-ui.jsx';
-import { ref } from '../src/model.mjs';
-import { schemeNames } from '../src/standards.mjs';
-import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.mjs';
+import { ref } from '../src/model.js';
+import { schemeNames } from '../src/standards.js';
+import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.js';
 import {
   SPINNING,
   SPIN_ROUTES,
@@ -11,8 +11,8 @@ import {
   spinSettings,
   preparationRecord,
   countLabel,
-} from '../src/spinning.mjs';
-import { scanRecord } from '../src/fibre.mjs';
+} from '../src/spinning.js';
+import { scanRecord } from '../src/fibre.js';
 import {
   stockHint,
   batchDetail,

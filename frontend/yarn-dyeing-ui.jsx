@@ -1,8 +1,8 @@
 import { joinContent } from './react-ui.jsx';
-import { ref, genealogy, today } from '../src/model.mjs';
-import { schemeNames } from '../src/standards.mjs';
-import { schemesOf } from '../src/commerce.mjs';
-import { FABRIC_ROUTE_TEMPLATES, CONDITIONAL_OPERATIONS, lineComponents, stageLabel } from '../src/routes.mjs';
+import { ref, genealogy, today } from '../src/model.js';
+import { schemeNames } from '../src/standards.js';
+import { schemesOf } from '../src/commerce.js';
+import { FABRIC_ROUTE_TEMPLATES, CONDITIONAL_OPERATIONS, lineComponents, stageLabel } from '../src/routes.js';
 import {
   colourShade,
   PROCESS,
@@ -12,8 +12,8 @@ import {
   batchSummary,
   wipKg,
   batchSteps,
-} from '../src/yarn-dyeing.mjs';
-import { YARN_ROLES } from '../src/yarn-allocation.mjs';
+} from '../src/yarn-dyeing.js';
+import { YARN_ROLES } from '../src/yarn-allocation.js';
 import {
   stockHint,
   batchDetail,

@@ -15,7 +15,7 @@ import {
   sum,
   today,
   ROLES,
-} from '../src/model.mjs';
+} from '../src/model.js';
 import {
   MASTER_LABELS,
   PARTY_TYPES,
@@ -27,11 +27,11 @@ import {
   schemesOf,
   orderRoute,
   orderWorkflow,
-} from '../src/commerce.mjs';
-import { schemeNames } from '../src/standards.mjs';
-import { fabricSpecAt } from '../src/fabric.mjs';
-import { materialRequirements } from '../src/garment.mjs';
-import { productionProcess } from '../src/po-process.mjs';
+} from '../src/commerce.js';
+import { schemeNames } from '../src/standards.js';
+import { fabricSpecAt } from '../src/fabric.js';
+import { materialRequirements } from '../src/garment.js';
+import { productionProcess } from '../src/po-process.js';
 import { fabricInspectionCell, fabricInspectionFields, fabricSpecCard, fabricSpecFields } from './fabric-ui.jsx';
 import {
   buyerPoFile,

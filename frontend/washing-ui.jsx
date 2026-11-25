@@ -1,6 +1,6 @@
 import { joinContent, setContents } from './react-ui.jsx';
-import { STAGES, WASH_STAGES, ref } from '../src/model.mjs';
-import { lineRemaining, lineRemainingKg } from '../src/process-batch.mjs';
+import { STAGES, WASH_STAGES, ref } from '../src/model.js';
+import { lineRemaining, lineRemainingKg } from '../src/process-batch.js';
 import {
   h,
   can,

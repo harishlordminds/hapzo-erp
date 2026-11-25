@@ -1,9 +1,9 @@
 import { joinContent } from './react-ui.jsx';
-import { ref, genealogy } from '../src/model.mjs';
-import { schemeNames } from '../src/standards.mjs';
-import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.mjs';
-import { stageLabel } from '../src/routes.mjs';
-import { WEAVE, LOOM, WEAVES, LOOM_TYPES, WEFT_PREP, DRESSING, loomProfile, weftState } from '../src/weaving.mjs';
+import { ref, genealogy } from '../src/model.js';
+import { schemeNames } from '../src/standards.js';
+import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.js';
+import { stageLabel } from '../src/routes.js';
+import { WEAVE, LOOM, WEAVES, LOOM_TYPES, WEFT_PREP, DRESSING, loomProfile, weftState } from '../src/weaving.js';
 import {
   batchDetail,
   lotHistory,

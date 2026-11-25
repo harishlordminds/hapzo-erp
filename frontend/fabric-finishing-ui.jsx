@@ -1,7 +1,7 @@
 import { joinContent } from './react-ui.jsx';
-import { ref } from '../src/model.mjs';
-import { FABRIC_FINISHING, FINISH_OPERATIONS, finishEntries, finishedRollTrace } from '../src/fabric-finishing.mjs';
-import { lineRemainingKg, latestActive, wipKg } from '../src/process-batch.mjs';
+import { ref } from '../src/model.js';
+import { FABRIC_FINISHING, FINISH_OPERATIONS, finishEntries, finishedRollTrace } from '../src/fabric-finishing.js';
+import { lineRemainingKg, latestActive, wipKg } from '../src/process-batch.js';
 import { batchDetail, optional, optionalNumber, requiredNumber, now, stamp, params } from './process-ui.jsx';
 import {
   h,

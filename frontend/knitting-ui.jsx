@@ -1,8 +1,8 @@
 import { joinContent } from './react-ui.jsx';
-import { ref, genealogy } from '../src/model.mjs';
-import { schemeNames } from '../src/standards.mjs';
-import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.mjs';
-import { stageLabel } from '../src/routes.mjs';
+import { ref, genealogy } from '../src/model.js';
+import { schemeNames } from '../src/standards.js';
+import { RATE_KEYS, wipKg, latestActive } from '../src/process-batch.js';
+import { stageLabel } from '../src/routes.js';
 import {
   KNITTING,
   MACHINE_PROFILE,
@@ -11,7 +11,7 @@ import {
   MACHINE_TYPES,
   machineProfile,
   lotCount,
-} from '../src/knitting.mjs';
+} from '../src/knitting.js';
 import {
   stockHint,
   batchDetail,
